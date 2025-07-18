@@ -20,4 +20,8 @@ public class Scan {
 
     @Column(nullable = false)
     private Instant requestedAt = Instant.now();
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private ScanStatus status = ScanStatus.NEW;
 }
