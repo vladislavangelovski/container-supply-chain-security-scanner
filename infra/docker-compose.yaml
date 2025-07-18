@@ -10,6 +10,8 @@ services:
       POSTGRES_PASSWORD: scanner
       POSTGRES_USER: scanner
       POSTGRES_DB: scanner
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD", "pg_isready", "-U", "scanner"]
       interval: 10s
