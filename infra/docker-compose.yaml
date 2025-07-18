@@ -1,0 +1,49 @@
+version: "3.9"
+
+name: container-security-scanner
+
+services:
+  postgres-scan:
+    image: postgres:16
+    container_name: postgres-scan
+    environment:
+      POSTGRES_PASSWORD: scanner
+      POSTGRES_USER: scanner
+      POSTGRES_DB: scanner
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "scanner"]
+      interval: 10s
+      retries: 5
+    networks:
+      - scanner-net
+
+  scan-service:
+    build: ../services/scan-service
+    depends_on: [postgres-scan]
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    ports: ["8080:8080"]
+    networks:
+      - scanner-net
+
+  vuln-service:
+    build: ../services/vuln-service
+    depends_on: [postgres-scan]
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    ports: ["8081:8080"]
+    networks:
+      - scanner-net
+
+  prioritizer-service:
+    build: ../services/prioritizer-service
+    depends_on:
+      - scan-service
+      - vuln-service
+    ports: ["8082:8080"]
+    networks:
+      - scanner-net
+
+networks:
+  scanner-net:
+    driver: bridge
