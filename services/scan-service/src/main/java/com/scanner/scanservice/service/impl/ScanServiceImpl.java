@@ -3,7 +3,7 @@ package com.scanner.scanservice.service.impl;
 import com.scanner.scanservice.model.Scan;
 import com.scanner.scanservice.repository.ScanRepository;
 import com.scanner.scanservice.service.ScanService;
-import jdk.jshell.spi.ExecutionControl;
+import com.scanner.scanservice.service.exceptions.ScanNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
@@ -22,5 +22,10 @@ public class ScanServiceImpl implements ScanService {
         Scan scan = new Scan();
         scan.setImageName(imageName);
         return scanRepository.save(scan).getId();
+    }
+
+    @Override
+    public Scan getScan(UUID scanId) {
+        return scanRepository.findById(scanId).orElseThrow(() -> new ScanNotFoundException(scanId.toString()));
     }
 }
