@@ -21,7 +21,6 @@ public class ScanReport {
     @JoinColumn(name = "scan_id", unique = true)
     private Scan scan;
 
-    @Lob
-    @Column(nullable = false)
+    @Column(columnDefinition = "text", nullable = false)
     private String rawJson;
 }
