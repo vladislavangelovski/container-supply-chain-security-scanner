@@ -7,9 +7,9 @@ services:
     image: postgres:16
     container_name: postgres-scan
     environment:
-      POSTGRES_PASSWORD: scanner
-      POSTGRES_USER: scanner
-      POSTGRES_DB: scanner
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports:
       - "5432:5432"
     healthcheck:
@@ -24,6 +24,9 @@ services:
     depends_on: [postgres-scan]
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports: ["8080:8080"]
     networks:
       - scanner-net
@@ -33,6 +36,9 @@ services:
     depends_on: [postgres-scan]
     environment:
       SPRING_PROFILES_ACTIVE: docker
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     ports: ["8081:8080"]
     networks:
       - scanner-net
