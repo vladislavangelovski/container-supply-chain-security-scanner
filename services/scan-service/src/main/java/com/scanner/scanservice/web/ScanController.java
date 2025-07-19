@@ -7,6 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -67,5 +68,22 @@ public class ScanController {
                         finding.getFixedVersion(),
                         "https://nvd.nist.gov/vuln/detail/" + finding.getCve()
                 ));
+    }
+
+    @GetMapping("/{id}/report")
+    public ResponseEntity<String> downloadReport(@PathVariable("id") UUID scanId) {
+        String json = scanService.getRawReportJson(scanId);
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(json);
+    }
+
+    @GetMapping("/{id}/sbom")
+    public ResponseEntity<String> downloadSbom(@PathVariable("id") UUID scanId){
+        String json = scanService.getSbomJson(scanId);
+        return ResponseEntity
+                .ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(json);
     }
 }

@@ -1,9 +1,12 @@
 package com.scanner.scanservice.service.impl;
 
 import com.scanner.scanservice.model.Scan;
+import com.scanner.scanservice.model.ScanReport;
+import com.scanner.scanservice.repository.ScanReportRepository;
 import com.scanner.scanservice.repository.ScanRepository;
 import com.scanner.scanservice.repository.VulnerabilityFindingRepository;
 import com.scanner.scanservice.service.ScanService;
+import com.scanner.scanservice.service.exceptions.NotFoundException;
 import com.scanner.scanservice.service.exceptions.ScanNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -18,6 +21,7 @@ public class ScanServiceImpl implements ScanService {
 
     private final ScanRepository scanRepository;
     private final VulnerabilityFindingRepository vulnerabilityFindingRepository;
+    private final ScanReportRepository scanReportRepository;
 
     @Override
     public UUID createScan(String imageName) {
@@ -39,5 +43,19 @@ public class ScanServiceImpl implements ScanService {
     @Override
     public long countFindings(UUID reportId) {
         return vulnerabilityFindingRepository.countByScanReport_Scan_Id(reportId);
+    }
+
+    @Override
+    public String getRawReportJson(UUID scanId) {
+        return scanReportRepository.findByScan_Id(scanId)
+                .map(ScanReport::getRawJson)
+                .orElseThrow(() -> new NotFoundException("No raw report for scan" + scanId));
+    }
+
+    @Override
+    public String getSbomJson(UUID scanId) {
+        return scanReportRepository.findByScan_Id(scanId)
+                .map(ScanReport::getSbomJson)
+                .orElseThrow(() -> new NotFoundException("No SBOM for scan " + scanId));
     }
 }
