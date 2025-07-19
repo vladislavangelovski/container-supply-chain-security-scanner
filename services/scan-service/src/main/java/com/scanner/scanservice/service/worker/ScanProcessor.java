@@ -17,7 +17,13 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
+import java.util.UUID;
+
+import static java.nio.charset.StandardCharsets.UTF_8;
 
 @Component
 @RequiredArgsConstructor
@@ -48,18 +54,24 @@ public class ScanProcessor {
                 "--format", "json",
                 "--quiet",
                 imageName
-        ).redirectErrorStream(true).start();
+        ).start();
 
-        try (InputStream in = proc.getInputStream()) {
-            String json = new String(in.readAllBytes());
-            int exit = proc.waitFor();
-            if (exit != 0) {
-                throw new RuntimeException("Trivy exit code " + exit);
-            }
-            return json;
-        } finally {
-            proc.destroy();
+        String json;
+        try(InputStream in = proc.getInputStream()) {
+            json = new String(in.readAllBytes(), UTF_8);
         }
+        try (InputStream err = proc.getErrorStream()) {
+            String stderr = new String(err.readAllBytes(), UTF_8);
+            if (!stderr.isBlank()) {
+                log.warn("Trivy stderr: {}", stderr);
+            }
+        }
+
+        int exit = proc.waitFor();
+        if (exit != 0) {
+            throw new RuntimeException("Trivy exited with exit code " + exit);
+        }
+        return json;
     }
 
     @Transactional
@@ -75,10 +87,16 @@ public class ScanProcessor {
     @Transactional
     public void handleScan(Scan scan) {
         try {
+            Path archive = runSkopeoArchive(scan.getImageName(), scan.getId());
+
+            String sbomJson = runSyft("oci-archive:" + archive.toAbsolutePath());
+
             String rawJson = runTrivy(scan.getImageName());
+
             ScanReport report = new ScanReport();
             report.setScan(scan);
             report.setRawJson(rawJson);
+            report.setSbomJson(sbomJson);
             reportRepository.save(report);
 
             JsonNode root = objectMapper.readTree(rawJson);
@@ -104,5 +122,44 @@ public class ScanProcessor {
             log.error("Scan {} FAILED: {}", scan.getId(), ex.getMessage());
         }
         scanRepository.save(scan);
+    }
+
+    private Path runSkopeoArchive(String imageName, UUID scanId) throws Exception {
+        Path archive = Files.createTempFile(scanId.toString(), ".tar");
+        Process proc = new ProcessBuilder(
+                "skopeo", "copy",
+                "docker://" + imageName,
+                "oci-archive:" + archive.toAbsolutePath()
+        )
+                .redirectErrorStream(true)
+                .start();
+
+        int exit = proc.waitFor();
+        if (exit != 0) {
+            String err = new String(proc.getErrorStream().readAllBytes(), UTF_8);
+            throw new RuntimeException("Skopeo failed (" + exit + "): " + err);
+        }
+        return archive;
+    }
+
+    private String runSyft(String target) throws Exception {
+        Process proc = new ProcessBuilder(
+                "syft",
+                target,
+                "--output", "json"
+        )
+                .redirectErrorStream(false)
+                .start();
+
+        String json = new String(proc.getInputStream().readAllBytes(), UTF_8);
+        String stderr = new String(proc.getErrorStream().readAllBytes(), UTF_8);
+        if (!stderr.isBlank()) {
+            log.warn("Syft stderr: {}", stderr.trim());
+        }
+        int exit = proc.waitFor();
+        if (exit != 0) {
+            throw new RuntimeException("Syft failed (exit code " + exit + ")");
+        }
+        return json;
     }
 }

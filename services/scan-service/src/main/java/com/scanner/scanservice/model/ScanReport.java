@@ -26,4 +26,8 @@ public class ScanReport {
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(columnDefinition = "jsonb", nullable = false)
     private String rawJson;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "sbom_json", columnDefinition = "jsonb", nullable = false)
+    private String sbomJson;
 }
